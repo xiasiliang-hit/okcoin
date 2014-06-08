@@ -1,0 +1,166 @@
+
+import urllib2
+
+
+# -*- coding: utf-8 -*-
+# OKCoin api
+# https://www.okcoin.com/t-1000097.html
+# https://www.okcoin.com/t-1000052.html
+
+import httplib
+import urllib
+import json
+import md5
+import time
+
+import pdb
+import threading
+from threading import Thread
+import datetime
+
+class OKCoin():
+    # def __init__(self, api_key, api_secret):
+    #     self.api_key = api_key
+    #     self.api_secret = api_secret
+
+
+    #def __init__(self):
+        
+        
+    def __signature(self, params):
+        s = ''
+        for k in sorted(params.keys()):
+            if len(s) > 0:
+                s += '&'
+                s += k + '=' + str(params[k])
+        return md5.new(s + self.api_secret).hexdigest().upper()
+
+    def __tapi_call(self, method, params={}):
+        params["partner"] = self.api_key
+        params["sign"] = self.__signature(params)
+        headers = {
+            "Content-type" : "application/x-www-form-urlencoded",
+        }
+        conn = httplib.HTTPSConnection("www.okcoin.com", timeout=10)
+        params = urllib.urlencode(params)
+        conn.request("POST", "/api/%s.do" % method, params, headers)
+        response = conn.getresponse()
+        data = json.load(response)
+        conn.close()
+        #print data
+        res = data.get("result")
+        if res == "true" or res == True:
+            return data
+        else:
+            raise Exception("error code %s" % data["errorCode"])
+
+    def __api_call(self, method, pair):
+        #conn = httplib.HTTPSConnection("www.okcoin.com", timeout=10)
+        #conn.request("GET", "/api/%s.do?symbol=%s" % (method, pair))
+        #response = conn.getresponse()
+
+        response = urllib2.urlopen("https://www.okcoin.com/api/"  + method + ".do?symbol=" + pair)
+        
+#        response = urllib2.urlopen("https://www.okcoin.com/api/ticker.do")
+        data = json.load(response)
+        
+        return data
+
+    def get_ticker(self, pair):
+        # https://www.okcoin.com/api/ticker.do?symbol=ltc_cny
+        data = self.__api_call("ticker", pair)
+
+        if "ticker" in data:
+            return {
+                "buy": data["ticker"]["buy"],
+                "sell": data["ticker"]["sell"],
+
+                "low": data["ticker"]["low"],
+                "high": data["ticker"]["high"],
+                
+                "last": data["ticker"]["last"],
+                "vol": data["ticker"]["vol"]
+            }
+        else:
+            raise Exception("Error when get ticker")
+
+    def get_depth(self, pair):
+        # https://www.okcoin.com/api/depth.do?symbol=ltc_cny
+        return self.__api_call("depth", pair)
+
+    def get_funds(self):
+        return self.__tapi_call('userinfo')
+
+    def get_orders(self, pair, order_id=-1):
+        params = { "symbol"   : pair, "order_id" : order_id }
+        result = self.__tapi_call('getorder', params)
+        return result["orders"]
+
+    def trade(self, tpair, ttype, price, amount):
+        params = {
+            "symbol" : tpair,
+            "type"   : ttype,
+            "rate"   : price,
+            "amount" : amount
+        }
+        result = self.__tapi_call('trade', params)
+        return result["order_id"]
+
+    def buy(self, pair, price, amount):
+        result = self.trade(pair, "buy", price, amount)
+        return result
+
+    def sell(self, pair, price, amount):
+        result = self.trade(pair, "sell", price, amount)
+        return result
+
+    def cancel(self, pair, order_id):
+        params = { "symbol": pair, "order_id" : order_id }
+        return type(self.__tapi_call('cancelorder', params)) == dict
+
+
+
+
+
+class tickerRecord(Thread):
+    
+    def run(self):
+        c = OKCoin()
+        dt = datetime.datetime.now()
+        
+
+        f = open(str(dt),"w")
+        
+        for i in range(0, (6)*60*24):
+
+            ticker = c.get_ticker("btc_cny")
+            l = [v.encode('ascii') for (k, v) in ticker.iteritems()]
+            line = ', '.join(l)
+
+            print "buy, sell, low, high, last, volumn"
+            print line
+            
+            f.write(line)
+            time.sleep(2)
+        f.close()        
+    
+        
+if __name__ == '__main__':
+#    c= OKCoin("3523330",  "ABF9356BCD703F04EA7FF83AB53826B0") ;
+
+#    partner = ""
+#    key = ""
+
+#    pair = "btc_cny"
+
+    
+    t = tickerRecord()
+    t.start()
+
+ #    c = OKCoin();
+ #     re = c.get_ticker("btc_cny");
+ # #    print re
+
+ #     print "dirct"
+ #     repon = urllib2.urlopen("https://www.okcoin.com/api/ticker.do")
+ #     print repon.read()
