@@ -121,46 +121,5 @@ class OKCoin():
 
 
 
-
-class tickerRecord(Thread):
-    
-    def run(self):
-        c = OKCoin()
-        dt = datetime.datetime.now()
-        
-
-        f = open(str(dt),"w")
-        
-        for i in range(0, (6)*60*24):
-
-            ticker = c.get_ticker("btc_cny")
-            l = [v.encode('ascii') for (k, v) in ticker.iteritems()]
-            line = ', '.join(l)
-
-            print "buy, sell, low, high, last, volumn"
-            print line
-            
-            f.write(line)
-            time.sleep(2)
-        f.close()        
     
         
-if __name__ == '__main__':
-#    c= OKCoin("3523330",  "ABF9356BCD703F04EA7FF83AB53826B0") ;
-
-#    partner = ""
-#    key = ""
-
-#    pair = "btc_cny"
-
-    
-    t = tickerRecord()
-    t.start()
-
- #    c = OKCoin();
- #     re = c.get_ticker("btc_cny");
- # #    print re
-
- #     print "dirct"
- #     repon = urllib2.urlopen("https://www.okcoin.com/api/ticker.do")
- #     print repon.read()
